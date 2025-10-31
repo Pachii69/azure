@@ -17,14 +17,15 @@ parameters = {
     "dns_name_label": os.getenv("DNS_NAME_LABEL", f"um-app-{os.getpid()}"), #QUE SEA ALEATORIO - 0-999
     "cpu": os.getenv("CPU", "1.0"),
     "memory_gb": os.getenv("MEMORY_GB", "1.5"),
-    "port": os.getenv("PORT", "80")
+    "port": os.getenv("PORT", "80"),
+    "acr_password_secret_name": os.getenv("ACR_PASSWORD_SECRET_NAME")
 }
 
 
 def run_command(command, capture_output=False, text=False, input_data=None):
     print(f"Ejecutando: {' '.join(command)}")
     try:
-        result = sp.run(command, input=input_data, capture_output=capture_output, text=text, check=True)
+        result = sp.run(command, input=input_data, capture_output=capture_output, text=text, check=True, shell=True)
         return result
     except sp.CalledProcessError as e:
         print(f"Error ejecutando el comando: {e}")
@@ -44,7 +45,7 @@ def check_or_create_resource_group(params):
 def check_or_create_acr(params):
     print(f"\n--- Verificando ACR: {params['acr_name']} ---")
     try:
-        sp.run(['az', 'acr', 'show', '--name', params['acr_name'], '--resource-group', params['resource_group']], capture_output=False, check=True)
+        sp.run(['az', 'acr', 'show', '--name', params['acr_name'], '--resource-group', params['resource_group']], capture_output=False, check=True, shell=True)
         print("El ACR ya existe.")
     except sp.CalledProcessError:
         print("Creando ACR...")
@@ -86,7 +87,6 @@ def create_service_principal(params):
         '--name', params['service_principal_name'],
         '--scopes', acr_scope_id,
         '--role', 'acrpull',
-        '--query', 'password'
     ], capture_output=True, text=True)
     credentials = json.loads(sp_creds_result.stdout)
     return credentials['appId'], credentials['password']
@@ -126,22 +126,27 @@ def deploy_container_instance(params, login_server, image_tag, sp_app_id, sp_pas
         '--registry-password', sp_password,
         '--ip-address', 'Public',
         '--dns-name-label', params['dns_name_label'],
-        '--ports', params['port']
+        '--ports', params['port'],
+        '--os-type', 'Linux',
     ]
     run_command(deploy_cmd)
     print("Contenedor desplegado exitosamente.")
 
+def docker_login(params):
+    print(f"\n--- Iniciando sesión en ACR ---")
+    run_command(['docker', 'login', f"{params['acr_name']}.azurecr.io", '-u', params['acr_name'], '-p', params['acr_password_secret_name']])
 
 def main():
     """Flujo principal del script de despliegue."""
     check_or_create_resource_group(parameters)
     check_or_create_acr(parameters)
 
-    #docker_build(parameters)
+    docker_build(parameters)
     acr_login_server, full_image_tag = docker_tag(parameters)
 
     sp_app_id, sp_password = create_or_get_service_principal(parameters)
     
+    docker_login(parameters)
     docker_push(full_image_tag)
 
 

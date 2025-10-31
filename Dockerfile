@@ -6,6 +6,7 @@ RUN apt-get install -y build-essential
 RUN apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false
 RUN rm -rf /var/lib/apt/lists/*
 
+
 COPY go.mod .
 COPY go.sum .
 RUN go mod download
@@ -21,6 +22,7 @@ RUN CGO_ENABLED=0 go build -o main -ldflags "-s -w"
 FROM gcr.io/distroless/static-debian11 AS production
 ENV GIN_MODE=release
 WORKDIR /go/app/bin
+
 
 COPY --from=builder /go/app/builder/main /go/app/bin/main
 

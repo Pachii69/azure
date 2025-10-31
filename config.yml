@@ -1,0 +1,7 @@
+app-name: "azure app"
+app-version: "1.0.0"
+
+azure-connection-string: "InstrumentationKey=be8fd461-19a6-426a-8ce3-e6d141ee40f5;IngestionEndpoint=https://northcentralus-0.in.applicationinsights.azure.com/;LiveEndpoint=https://northcentralus.livediagnostics.monitor.azure.com/;ApplicationId=33308bd2-ca11-4145-af25-a5489acf621c"
+
+logging-level: "info"
+logging-format: "json"
